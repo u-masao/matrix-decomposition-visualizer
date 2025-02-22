@@ -28,6 +28,7 @@ def plot_heatmap(data):
     data_rows = data.shape[0]
     data_cols = data.shape[1]
 
+    plt.close()
     fig, ax = plt.subplots(figsize=(data_cols / 40 + 3.0, data_rows / 40))
 
     # Create a ScalarMappable to get the colorbar
