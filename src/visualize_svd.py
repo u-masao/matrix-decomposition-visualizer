@@ -6,37 +6,36 @@ import gradio as gr
 def svd_image(file):
     # 画像を読み込む
     img = Image.open(file).convert('L')
-    img_array = np.array(img)
+    img = np.array(img)
     
     # SVD分解
-    U, S, Vt = np.linalg.svd(img_array)
+    U, S, Vt = np.linalg.svd(img)
     
-    # 再構成画像 (k=50までの特異値を使用)
-    k = 50
-    img_reconstructed = np.dot(U[:, :k], np.dot(np.diag(S[:k]), Vt[:k, :]))
+    # 特異値の最大値を取得
+    max_singular_value = np.max(S)
     
-    # 元画像と再構成画像を表示
-    fig, axs = plt.subplots(1, 2)
-    axs[0].imshow(img, cmap='gray')
-    axs[0].set_title('Original Image')
-    axs[1].imshow(img_reconstructed, cmap='gray')
-    axs[1].set_title('Reconstructed Image (k=50)')
+    # 特異値行列を再構成
+    S_diag = np.zeros((U.shape[0], Vt.shape[1]))
+    np.fill_diagonal(S_diag, S)
     
-    # 画像を表示
-    plt.show()
+    # UとS_diagとVtの積で元の画像を再構成
+    reconstructed_img = (U @ S_diag @ Vt).clip(0, 255).astype('uint8')
     
-    return fig
+    # 結果を表示するために画像をPIL形式に戻す
+    reconstructed_img_pil = Image.fromarray(reconstructed_img)
+    
+    return gr.Image(value=reconstructed_img_pil, label="Reconstructed Image")
 
-# Gradio UIの作成
+# GradioのUIを作成
 with gr.Blocks() as demo:
     with gr.Row():
         image_input = gr.File(label="Drag and drop an image here or click to upload")
     
-    def process_image(file):
-        return svd_image(file)
+    # 画像がアップロードされたときの処理関数
+    output_image = gr.Image(label="Reconstructed Image")
+    
+    # 画像アップロードとSVD分解結果の関連付け
+    image_input.change(fn=svd_image, inputs=image_input, outputs=output_image)
 
-    output_fig = gr.Plot(label="SVD Decomposed Image")
-    image_input.change(fn=process_image, inputs=image_input, outputs=output_fig)
-
-# Gradioサーバーの起動
+# Gradioサーバーを起動
 demo.launch(share=False)
