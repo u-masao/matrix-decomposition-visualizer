@@ -7,6 +7,7 @@ def svd_image(file):
     # 画像を読み込む
     img = Image.open(file).convert('L')
     img = np.array(img)
+    print(img.shape)
     
     # SVD分解
     U, S, Vt = np.linalg.svd(img)
