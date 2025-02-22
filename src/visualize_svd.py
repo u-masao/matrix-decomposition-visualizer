@@ -37,10 +37,22 @@ def svd_image(file):
     S_bitmap = (S / max_singular_value * 255).clip(0, 255).astype('uint8')
     S_bitmap_pil = Image.fromarray(S_bitmap)
     
+    # Sのビットマップ画像の横幅を100pxに設定
+    width, height = S_bitmap.shape[1], 100
+    resized_S_bitmap = np.zeros((height, width), dtype=np.uint8)
+    if S_bitmap.shape[0] > height:
+        start = (S_bitmap.shape[0] - height) // 2
+        resized_S_bitmap = S_bitmap[start:start+height, :]
+    else:
+        start = (height - S_bitmap.shape[0]) // 2
+        resized_S_bitmap[:S_bitmap.shape[0], :] = S_bitmap
+    
+    resized_S_bitmap_pil = Image.fromarray(resized_S_bitmap)
+    
     return gr.Image(value=reconstructed_img_pil, label="Reconstructed Image"), \
            gr.Image(value=U_bitmap_pil, label="U Bitmap"), \
            gr.Image(value=V_bitmap_pil, label="V Bitmap"), \
-           gr.Image(value=S_bitmap_pil, label="S Bitmap")
+           gr.Image(value=resized_S_bitmap_pil, label="S Bitmap")
 
 # GradioのUIを作成
 with gr.Blocks() as demo:
