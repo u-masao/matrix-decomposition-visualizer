@@ -65,5 +65,9 @@ with gr.Blocks() as demo:
         outputs=[output_image, U_bitmap, S_bitmap, V_bitmap],
     )
 
+    # オリジナル画像を出力するWidgetを追加
+    original_image = gr.Image(label="Original Image")
+    url_input.submit(lambda: (response.content), inputs=None, outputs=original_image)
+
 # Gradioサーバーを起動
 demo.launch(share=False)
