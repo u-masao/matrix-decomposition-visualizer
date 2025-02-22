@@ -4,7 +4,7 @@ from PIL import Image
 import gradio as gr
 
 def svd_image(file):
-    # 画像を読み込む
+    # 画像をURLから取得する
     img = Image.open(file).convert('L')
     img = np.array(img)
     
