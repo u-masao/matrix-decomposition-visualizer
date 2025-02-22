@@ -41,8 +41,8 @@ def svd_image(image_url):
     return (
         gr.Image(value=reconstructed_img_pil, label="Reconstructed Image"),
         gr.Image(value=U_bitmap_pil, label="U Bitmap"),
-        gr.Image(value=V_bitmap_pil, label="V Bitmap"),
         gr.Image(value=S_bitmap_pil, label="S Bitmap"),
+        gr.Image(value=V_bitmap_pil, label="V Bitmap"),
     )
 
 # GradioのUIを作成
@@ -51,18 +51,18 @@ with gr.Blocks() as demo:
         url_input = gr.Textbox(lines=1, placeholder="Enter image URL here...")
 
     # 画像がアップロードされたときの処理関数
-    output_image, U_bitmap, V_bitmap, S_bitmap = (
+    output_image, U_bitmap, S_bitmap, V_bitmap = (
         gr.Image(label="Reconstructed Image"),
         gr.Image(label="U Bitmap"),
-        gr.Image(label="V Bitmap"),
         gr.Image(label="S Bitmap"),
+        gr.Image(label="V Bitmap"),
     )
 
     # URLから画像を取得してSVD分解する関数
     url_input.submit(
         svd_image,
         inputs=url_input,
-        outputs=[output_image, U_bitmap, V_bitmap, S_bitmap],
+        outputs=[output_image, U_bitmap, S_bitmap, V_bitmap],
     )
 
 # Gradioサーバーを起動
