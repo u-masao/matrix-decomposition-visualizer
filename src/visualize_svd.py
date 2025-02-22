@@ -1,12 +1,13 @@
 import gradio as gr
 import numpy as np
 from PIL import Image
-
+import requests
+from io import BytesIO
 
 def svd_image(image_url):
-
-    # todo: image_url から画像データを取得して Image オブジェクトにすること
-    img = Image.open(image_url).convert("L")
+    # 画像データを取得して Image オブジェクトにすること
+    response = requests.get(image_url)
+    img = Image.open(BytesIO(response.content)).convert("L")
     img = np.array(img)
 
     # SVD分解
@@ -43,7 +44,6 @@ def svd_image(image_url):
         gr.Image(value=V_bitmap_pil, label="V Bitmap"),
         gr.Image(value=S_bitmap_pil, label="S Bitmap"),
     )
-
 
 # GradioのUIを作成
 with gr.Blocks() as demo:
