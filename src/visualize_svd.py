@@ -2,9 +2,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import gradio as gr
+import requests
+from io import BytesIO
 
 def svd_image(file):
-    # 画像をURLから取得する
+    if file is None:
+        url = gr.inputs.Textbox(lines=1, placeholder="Enter image URL here...")
+        return gr.Image(label="Reconstructed Image"), \
+               gr.Image(label="U Bitmap"), \
+               gr.Image(label="V Bitmap"), \
+               gr.Image(label="S Bitmap")
+    
     img = Image.open(file).convert('L')
     img = np.array(img)
     
@@ -45,6 +53,7 @@ def svd_image(file):
 with gr.Blocks() as demo:
     with gr.Row():
         image_input = gr.File(label="Drag and drop an image here or click to upload")
+        url_input = gr.Textbox(lines=1, placeholder="Enter image URL here...")
     
     # 画像がアップロードされたときの処理関数
     output_image, U_bitmap, V_bitmap, S_bitmap = gr.Image(label="Reconstructed Image"), \
@@ -54,6 +63,9 @@ with gr.Blocks() as demo:
     
     # 画像アップロードとSVD分解結果の関連付け
     image_input.change(fn=svd_image, inputs=image_input, outputs=[output_image, U_bitmap, V_bitmap, S_bitmap])
+    
+    # URLから画像を取得してSVD分解する関数
+    url_input.submit(svd_image_from_url, inputs=url_input, outputs=[output_image, U_bitmap, V_bitmap, S_bitmap])
 
 # Gradioサーバーを起動
 demo.launch(share=False)
