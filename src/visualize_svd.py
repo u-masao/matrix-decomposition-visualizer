@@ -8,6 +8,7 @@ import requests
 from matplotlib.cm import ScalarMappable
 from PIL import Image
 
+# 例として提供された画像URLのリスト
 example_urls = [
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSoki9ZKPtsoYw1z_A2"
     "DZQIpMnObustPL7OKA&s",
@@ -23,7 +24,7 @@ example_urls = [
     "https://live.staticflickr.com/7497/15364254203_e6d7a2465b_b.jpg",
 ]
 
-
+# ヒートマップをプロットする関数
 def plot_heatmap(data):
     data_rows = data.shape[0]
     data_cols = data.shape[1]
@@ -31,30 +32,30 @@ def plot_heatmap(data):
     plt.close()
     fig, ax = plt.subplots(figsize=(data_cols / 40 + 3.0, data_rows / 40))
 
-    # Create a ScalarMappable to get the colorbar
-    cmap = plt.get_cmap("viridis")  # You can choose any colormap here
+    # カラーマップを設定
+    cmap = plt.get_cmap("viridis")  # 任意のカラーマップを選択可能
     norm = plt.Normalize(vmin=data.min(), vmax=data.max())
     sm = ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])  # This is needed for the colorbar to work
+    sm.set_array([])  # これはカラーバーが機能するために必要
 
-    # Display the heatmap
+    # ヒートマップを表示
     ax.imshow(data, cmap=cmap, norm=norm)
     fig.colorbar(sm, ax=ax)  # , fraction=0.046, pad=0.035)
     fig.tight_layout()
 
     return fig
 
-
+# SVD分解を用いて画像を可視化する関数
 def svd_image(image_url, ignore_singular):
-    # 画像データを取得して Image オブジェクトにすること
+    # 画像データを取得してImageオブジェクトに変換
     response = requests.get(image_url)
     img = Image.open(BytesIO(response.content)).convert("L")
     img_array = np.array(img) / 255.0
 
-    # SVD分解
+    # SVD分解を実行
     U, S, Vt = np.linalg.svd(img_array)
 
-    # 特異値行列を再構成
+    # 特異値行列の再構成
     S_diag = np.zeros((U.shape[0], Vt.shape[1]))
     S_subset = np.where(np.arange(len(S)) == ignore_singular, S, 0)
     np.fill_diagonal(S_diag, S_subset)
@@ -74,8 +75,6 @@ def svd_image(image_url, ignore_singular):
     S_bitmap = (
         (np.log10(S) / max_singular_value * 255).clip(0, 255).astype("uint8")
     )
-    S_bitmap = np.log10(S)
-    S_bitmap = np.tile(S_bitmap[:, np.newaxis], 10)
     S_fig = plot_heatmap(S_bitmap)
 
     # Vのビットマップ画像を作成
@@ -93,7 +92,6 @@ def svd_image(image_url, ignore_singular):
         gr.Plot(value=V_fig, label="V Bitmap"),
         gr.Markdown(memo, label="memo"),
     )
-
 
 # GradioのUIを作成
 with gr.Blocks() as demo:
@@ -125,8 +123,7 @@ with gr.Blocks() as demo:
             gr.Plot(label="V Bitmap"),
         )
 
-    # URLから画像を取得してSVD分解する関数
-
+    # URLから画像を取得してSVD分解する関数のトリガー設定
     for func in [
         url_input.submit,
         url_input.change,
