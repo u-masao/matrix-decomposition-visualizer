@@ -24,6 +24,7 @@ example_urls = [
     "https://live.staticflickr.com/7497/15364254203_e6d7a2465b_b.jpg",
 ]
 
+
 # ヒートマップをプロットする関数
 def plot_heatmap(data):
     data_rows = data.shape[0]
@@ -44,6 +45,7 @@ def plot_heatmap(data):
     fig.tight_layout()
 
     return fig
+
 
 # SVD分解を用いて画像を可視化する関数
 def svd_image(image_url, ignore_singular):
@@ -75,6 +77,7 @@ def svd_image(image_url, ignore_singular):
     S_bitmap = (
         (np.log10(S) / max_singular_value * 255).clip(0, 255).astype("uint8")
     )
+    S_bitmap = np.tile(S_bitmap[:, np.newaxis], 10)
     S_fig = plot_heatmap(S_bitmap)
 
     # Vのビットマップ画像を作成
@@ -92,6 +95,7 @@ def svd_image(image_url, ignore_singular):
         gr.Plot(value=V_fig, label="V Bitmap"),
         gr.Markdown(memo, label="memo"),
     )
+
 
 # GradioのUIを作成
 with gr.Blocks() as demo:
