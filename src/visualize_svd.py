@@ -8,6 +8,7 @@ import requests
 from matplotlib.cm import ScalarMappable
 from PIL import Image
 
+# init U, Sigma, Vt
 U = None
 S = None
 Vt = None
@@ -29,52 +30,67 @@ example_urls = [
 ]
 
 
-# ヒートマップをプロットする関数
 def plot_heatmap(data):
-    data_rows = data.shape[0]
-    data_cols = data.shape[1]
-
+    """
+    plot heatmap and histogram
+    """
     plt.close()
-    figsize = (data_cols / 40 + 3.0, data_rows / 40)
+
+    # data_rows = data.shape[0]
+    # data_cols = data.shape[1]
+    # figsize = (data_cols / 40 + 3.0, data_rows / 40)
     figsize = (12, 4)
     fig, ax = plt.subplots(1, 2, figsize=figsize)
 
     # カラーマップを設定
-    cmap = plt.get_cmap("viridis")  # 任意のカラーマップを選択可能
+    cmap = plt.get_cmap("viridis")
     norm = plt.Normalize(vmin=data.min(), vmax=data.max())
     sm = ScalarMappable(cmap=cmap, norm=norm)
-    # sm.set_array([])  # これはカラーバーが機能するために必要
 
     # ヒートマップを表示
     ax[0].imshow(data, cmap=cmap, norm=norm)
     ax[1].hist(data.flatten(), bins=51)
-    fig.colorbar(sm, ax=ax[0])  # , fraction=0.046, pad=0.035)
+    fig.colorbar(sm, ax=ax[0])
     fig.tight_layout()
 
     return fig
 
 
 def reconstruct(U, S, Vt, singular_index: int):
+    """
+    reconstruct image from U, S, Vt
 
+    """
+
+    # vector to matrix about Sigma
     S_diag = np.zeros((U.shape[0], Vt.shape[1]))
+
+    # 対角成分を埋める
     np.fill_diagonal(S_diag, S)
 
     # UとS_diagとVtの積で元の画像を再構成
     reconstructed_img = (255.0 * U @ S_diag @ Vt).clip(0, 255).astype("uint8")
 
-    # 結果を表示するために画像をPIL形式に戻す
+    # PIL形式に戻す
     reconstructed_img_pil = Image.fromarray(reconstructed_img)
 
     return reconstructed_img_pil
 
 
 def update_image(image_url, singular_index):
+    """
+    update_image gradio components callback
+    """
     comps = load_and_decompose_image(image_url)
-    comps += svd_image(singular_index)
+    comps += decompose_singular_index(singular_index)
     return comps
 
 
 def load_and_decompose_image(image_url):
+    """
+    load image and decompose
+    """
+
     global U, S, Vt
     # 画像データを取得してImageオブジェクトに変換
     response = requests.get(image_url)
@@ -88,49 +104,57 @@ def load_and_decompose_image(image_url):
     reconstructed_img = reconstruct(U, S, Vt, singular_index)
 
     # Uのビットマップ画像を作成
-    U_bitmap = (U * 127 + 128).clip(0, 255).astype("uint8")
-    U_fig = plot_heatmap(U_bitmap)
+    U_fig = plot_heatmap(U)
 
-    # Sのビットマップ画像を作成
-    max_singular_value = np.log10(np.max(S))
-    S_bitmap = (
-        (np.log10(S) / max_singular_value * 255).clip(0, 255).astype("uint8")
-    )
+    # log10(S)のビットマップ画像を作成
     S_bitmap = np.log10(S)
-    S_bitmap = np.tile(S_bitmap[:, np.newaxis], 10)
+
+    # 横幅を広げる
+    S_bitmap = np.tile(S_bitmap[:, np.newaxis], min(img.size))
     S_fig = plot_heatmap(S_bitmap)
 
     # Vのビットマップ画像を作成
-    V_bitmap = (Vt * 127 + 128).clip(0, 255).astype("uint8")
-    V_fig = plot_heatmap(V_bitmap)
+    V_fig = plot_heatmap(Vt)
+
+    # make memo
+    memo = ""
+    memo += f"{pd.Series(S).describe().to_dict()=}\n\n"
+    memo += f"{U.shape=}\n\n"
+    memo += f"{S.shape=}\n\n"
+    memo += f"{Vt.shape=}\n\n"
 
     return (
-        gr.Image(value=img, label="Original Image"),
+        gr.Image(value=img, label="Grayscale Image"),
         gr.Image(value=reconstructed_img, label="Reconstructed Image"),
         gr.Plot(value=U_fig, label="U Bitmap"),
-        gr.Plot(S_fig, label="S bitmap"),
+        gr.Plot(value=S_fig, label="S bitmap"),
         gr.Plot(value=V_fig, label="V Bitmap"),
+        gr.Markdown(memo, label="memo"),
     )
 
 
-# SVD分解を用いて画像を可視化する関数
-def svd_image(singular_index):
+def decompose_singular_index(singular_index):
+    """
+    decompose singular_index
+
+    """
     global U, S, Vt
 
+    # input validation
     for x in [U, S, Vt]:
         if x is None:
-            return tuple([None] * 4)
-
-    reconstructed_img_single = reconstruct(
-        U,
-        np.where(np.arange(len(S)) == singular_index, S, 0),
-        Vt,
-        singular_index,
-    )
+            return tuple([None] * 3)
 
     reconstructed_img_positive = reconstruct(
         U,
         np.where(np.arange(len(S)) < singular_index, S, 0),
+        Vt,
+        singular_index,
+    )
+
+    reconstructed_img_single = reconstruct(
+        U,
+        np.where(np.arange(len(S)) == singular_index, S, 0),
         Vt,
         singular_index,
     )
@@ -142,17 +166,10 @@ def svd_image(singular_index):
         singular_index,
     )
 
-    memo = ""
-    memo += f"{pd.Series(S).describe().to_dict()=}\n\n"
-    memo += f"{U.shape=}\n\n"
-    memo += f"{S.shape=}\n\n"
-    memo += f"{Vt.shape=}\n\n"
-
     return (
         gr.Image(value=reconstructed_img_positive, label="Positive Image"),
         gr.Image(value=reconstructed_img_single, label="Single Image"),
         gr.Image(value=reconstructed_img_negative, label="Negative Image"),
-        gr.Markdown(memo, label="memo"),
     )
 
 
@@ -207,10 +224,10 @@ with gr.Blocks() as demo:
                 U_bitmap,
                 S_bitmap,
                 V_bitmap,
+                memo,
                 positive_image,
                 single_image,
                 negative_image,
-                memo,
             ],
         )
 
@@ -219,13 +236,12 @@ with gr.Blocks() as demo:
         singular_index.change,
     ]:
         func(
-            svd_image,
+            decompose_singular_index,
             inputs=[singular_index],
             outputs=[
                 positive_image,
                 single_image,
                 negative_image,
-                memo,
             ],
         )
 
