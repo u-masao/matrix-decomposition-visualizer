@@ -116,20 +116,12 @@ def load_and_decompose_image(image_url):
     # Vのビットマップ画像を作成
     V_fig = plot_heatmap(Vt)
 
-    # make memo
-    memo = ""
-    memo += f"{pd.Series(S).describe().to_dict()=}\n\n"
-    memo += f"{U.shape=}\n\n"
-    memo += f"{S.shape=}\n\n"
-    memo += f"{Vt.shape=}\n\n"
-
     return (
         gr.Image(value=img, label="Grayscale Image"),
         gr.Image(value=reconstructed_img, label="Reconstructed Image"),
         gr.Plot(value=U_fig, label="U Bitmap"),
         gr.Plot(value=S_fig, label="S bitmap"),
         gr.Plot(value=V_fig, label="V Bitmap"),
-        gr.Markdown(memo, label="memo"),
     )
 
 
@@ -166,10 +158,33 @@ def decompose_singular_index(singular_index):
         singular_index,
     )
 
+    # make memo
+    memo = ""
+    memo += f"{pd.Series(S).describe().to_dict()=}\n\n"
+    memo += f"{U.shape=}\n\n"
+    memo += f"{S.shape=}\n\n"
+    memo += f"{Vt.shape=}\n\n"
+    memo += f"{U[:,singular_index]=}\n\n"  # noqa: E231
+    memo += f"{S[singular_index]=}\n\n"
+    memo += f"{Vt[singular_index,:]=}\n\n"  # noqa: E231
+
     return (
         gr.Image(value=reconstructed_img_positive, label="Positive Image"),
         gr.Image(value=reconstructed_img_single, label="Single Image"),
         gr.Image(value=reconstructed_img_negative, label="Negative Image"),
+        gr.Plot(
+            value=plot_heatmap(np.array(reconstructed_img_positive)),
+            label="Positive heatmap",
+        ),
+        gr.Plot(
+            value=plot_heatmap(np.array(reconstructed_img_single)),
+            label="Single heatmap",
+        ),
+        gr.Plot(
+            value=plot_heatmap(np.array(reconstructed_img_negative)),
+            label="Negative heatmap",
+        ),
+        gr.Markdown(memo, label="memo"),
     )
 
 
@@ -196,6 +211,12 @@ with gr.Blocks() as demo:
             gr.Image(label="Nagative Image"),
         )
     with gr.Row():
+        positive_heatmap, single_heatmap, negative_heatmap = (
+            gr.Plot(label="Positive Heatmap"),
+            gr.Plot(label="Single Heatmap"),
+            gr.Plot(label="Negative Heatmap"),
+        )
+    with gr.Row():
         original_image, output_image = (
             gr.Image(label="Gray scale Image"),
             gr.Image(label="Reconstructed Image"),
@@ -209,6 +230,25 @@ with gr.Blocks() as demo:
     with gr.Row():
         memo = gr.Markdown("")
 
+    # define outputs
+    outputs_load = [
+        original_image,
+        output_image,
+        U_bitmap,
+        S_bitmap,
+        V_bitmap,
+    ]
+
+    outputs_decompose = [
+        positive_image,
+        single_image,
+        negative_image,
+        positive_heatmap,
+        single_heatmap,
+        negative_heatmap,
+        memo,
+    ]
+
     # load image and decompose
     for func in [
         url_input.submit,
@@ -218,17 +258,7 @@ with gr.Blocks() as demo:
         func(
             update_image,
             inputs=[url_input, singular_index],
-            outputs=[
-                original_image,
-                output_image,
-                U_bitmap,
-                S_bitmap,
-                V_bitmap,
-                memo,
-                positive_image,
-                single_image,
-                negative_image,
-            ],
+            outputs=outputs_load + outputs_decompose,
         )
 
     # URLから画像を取得してSVD分解する関数のトリガー設定
@@ -238,11 +268,7 @@ with gr.Blocks() as demo:
         func(
             decompose_singular_index,
             inputs=[singular_index],
-            outputs=[
-                positive_image,
-                single_image,
-                negative_image,
-            ],
+            outputs=outputs_decompose,
         )
 
 if __name__ == "__main__":
