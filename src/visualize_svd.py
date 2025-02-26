@@ -120,11 +120,11 @@ def load_and_decompose_image(image_url):
     V_fig = plot_heatmap(Vt)
 
     return (
-        gr.Image(value=img, label="Grayscale Image"),
-        gr.Image(value=reconstructed_img, label="Reconstructed Image"),
-        gr.Plot(value=U_fig, label="U Bitmap"),
-        gr.Plot(value=S_fig, label="S bitmap"),
-        gr.Plot(value=V_fig, label="V Bitmap"),
+        gr.Image(value=img, label="グレイスケール画像（オリジナル）"),
+        gr.Image(value=reconstructed_img, label="再構成画像"),
+        gr.Plot(value=U_fig, label="左特異ベクトルの行列 U のヒートマップ"),
+        gr.Plot(value=S_fig, label="特異値 Sigma の対角成分のヒートマップ"),
+        gr.Plot(value=V_fig, label="右特異ベクトルの行列 Vt のヒートマップ"),
     )
 
 
@@ -172,64 +172,132 @@ def decompose_singular_index(singular_index):
     memo += f"{Vt[singular_index,:]=}\n\n"  # noqa: E231
 
     return (
-        gr.Image(value=reconstructed_img_positive, label="Positive Image"),
-        gr.Image(value=reconstructed_img_single, label="Single Image"),
-        gr.Image(value=reconstructed_img_negative, label="Negative Image"),
+        gr.Image(
+            value=reconstructed_img_positive, label="大きい特異値の再構成画像"
+        ),
+        gr.Image(
+            value=reconstructed_img_single, label="指定の特異値の再構成画像"
+        ),
+        gr.Image(
+            value=reconstructed_img_negative, label="小さい特異値の再構成画像"
+        ),
         gr.Plot(
             value=plot_heatmap(np.array(reconstructed_img_positive)),
-            label="Positive heatmap",
+            label="大きい特異値のヒートマップ",
         ),
         gr.Plot(
             value=plot_heatmap(np.array(reconstructed_img_single)),
-            label="Single heatmap",
+            label="指定の特異値のヒートマップ",
         ),
         gr.Plot(
             value=plot_heatmap(np.array(reconstructed_img_negative)),
-            label="Negative heatmap",
+            label="小さい特異値のヒートマップ",
         ),
         gr.Markdown(memo, label="memo"),
     )
 
 
 # GradioのUIを作成
+
+wikipedia = (
+    "https://ja.wikipedia.org/wiki/"
+    "%E7%89%B9%E7%95%B0%E5%80%A4%E5%88%86%E8%A7%A3"
+)
+
 with gr.Blocks() as demo:
+    gr.Markdown(
+        f"""
+    # 特異値分解の可視化ツール➗
+
+    このツールは行列を分解する手法の一つである[特異値分解]({wikipedia})
+    (singular value decomposition, SVD) を直感的に理解するためのものです。
+    """
+    )
+
+    with gr.Accordion(label="使い方", open=False):
+        gr.Markdown(
+            """
+            指定のURLの画像をグレイスケールに変換して行列とみなします。
+            グレイスケールの数値は、0 から 255 の値を持ちますが、
+            行列分解処理時には 0.0 から 1.0 に正規化しています。
+            特異値は大きいものから降順にソートされています。
+
+            1. 画像 URL の入力
+
+            「サンプル画像のURL」のどれかをクリックするか、
+            「1. 画像の URL」 入力欄に画像のURLを入力します。
+
+            2. 画像が読み込めたことを確認し、再構成に成功していることを味わいます
+
+
+            3. 利用する特異値の変更
+
+            「再構成に利用する特異値のインデックス」スライダーを動かして、
+            再構成画像の変化を味わいます。
+
+            - 大きい特異値の再構成画像は、指定のインデックスよりも大きい値の特異値
+            を利用した再構成画像です。
+
+            - 指定の特異値の再構成画像は、指定のインデックスの特異値と特異ベクトル
+            を使った再構成画像です。
+
+            - 小さい特異値の再構成画像は、指定のインデックスよりも小さい値の特異値
+            を利用した再構成画像です。
+
+
+            """
+        )
     with gr.Row():
         url_input = gr.Textbox(
-            lines=1, placeholder="Enter image URL here...", scale=5
+            lines=1,
+            placeholder="Enter image URL here...",
+            scale=5,
+            label="1. 画像の URL",
         )
         submit_button = gr.Button(value="submit", scale=1)
+
     with gr.Row():
-        gr.Examples(examples=example_urls, inputs=url_input)
+        gr.Examples(
+            examples=example_urls,
+            inputs=url_input,
+            label="サンプル画像のURL",
+        )
+
     with gr.Row():
         singular_index = gr.Slider(
             minimum=0,
             maximum=100,
             step=1,
-            label="再構成に利用する特異値のインデックス",
+            label="2. 再構成に利用する特異値のインデックス",
         )
+
     with gr.Row():
         positive_image, single_image, negative_image = (
-            gr.Image(label="Positive Image"),
-            gr.Image(label="Single Image"),
-            gr.Image(label="Nagative Image"),
+            gr.Image(label="大きい特異値の再構成画像"),
+            gr.Image(label="指定の特異値の再構成画像"),
+            gr.Image(label="小さい特異値の再構成画像"),
         )
+
     with gr.Row():
         positive_heatmap, single_heatmap, negative_heatmap = (
-            gr.Plot(label="Positive Heatmap"),
-            gr.Plot(label="Single Heatmap"),
-            gr.Plot(label="Negative Heatmap"),
+            gr.Plot(label="大きい特異値のヒートマップ"),
+            gr.Plot(label="指定の特異値のヒートマップ"),
+            gr.Plot(label="小さい特異値のヒートマップ"),
         )
     with gr.Row():
         original_image, output_image = (
-            gr.Image(label="Gray scale Image"),
-            gr.Image(label="Reconstructed Image"),
+            gr.Image(label="グレイスケール画像（オリジナル）"),
+            gr.Image(label="再構成画像"),
         )
-    gr.Markdown("## Analysis U, SIGMA, Vt ")
+
+    gr.Markdown("## 分解された行列の分析")
+
     U_bitmap, S_bitmap, V_bitmap = (
-        gr.Plot(label="U Bitmap"),
-        gr.Plot(label="S Bitmap"),
-        gr.Plot(label="V Bitmap"),
+        gr.Plot(label="左特異ベクトルの行列 U のヒートマップ"),
+        gr.Plot(label="特異値 Sigma の対角成分のヒートマップ"),
+        gr.Plot(label="右特異ベクトルの行列 Vt のヒートマップ"),
     )
+
     with gr.Row():
         memo = gr.Markdown("")
 
