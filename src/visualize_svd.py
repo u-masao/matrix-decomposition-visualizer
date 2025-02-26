@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import requests
+import seaborn as sns
 from matplotlib.cm import ScalarMappable
 from PIL import Image
 
@@ -49,7 +50,9 @@ def plot_heatmap(data):
 
     # ヒートマップを表示
     ax[0].imshow(data, cmap=cmap, norm=norm)
-    ax[1].hist(data.flatten(), bins=51)
+    # ax[1].hist(data.flatten(), bins=51)
+    # ax[1].set_yscale('log')
+    sns.distplot(data.flatten(), kde=True, ax=ax[1])
     fig.colorbar(sm, ax=ax[0])
     fig.tight_layout()
 
