@@ -179,6 +179,15 @@ def decompose_singular_index(singular_index):
         singular_index,
     )
 
+    original_size = (
+        U.shape[0] * U.shape[1] + Vt.shape[0] * Vt.shape[1] + S.shape[0]
+    )
+    compressed_size = (
+        U[:, :singular_index].shape[0] * U[:, :singular_index].shape[1]
+        + Vt[:singular_index, :].shape[0] * Vt[:singular_index, :].shape[1]
+        + S[:singular_index].shape[0]
+    )
+
     # make memo
     memo = ""
     memo += f"{pd.Series(S).describe().to_dict()=}\n\n"
@@ -188,6 +197,9 @@ def decompose_singular_index(singular_index):
     memo += f"{U[:,singular_index]=}\n\n"  # noqa: E231
     memo += f"{S[singular_index]=}\n\n"
     memo += f"{Vt[singular_index,:]=}\n\n"  # noqa: E231
+    memo += f"{original_size=}\n\n"
+    memo += f"{compressed_size=}\n\n"
+    memo += f"{compressed_size/original_size=}\n\n"
 
     return (
         gr.Image(
