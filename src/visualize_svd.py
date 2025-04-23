@@ -2,6 +2,7 @@ from io import BytesIO
 
 import gradio as gr
 import matplotlib.pyplot as plt
+import matplotlib_fontja  # noqa: F401
 import numpy as np
 import pandas as pd
 import requests
@@ -37,9 +38,6 @@ def plot_heatmap(data):
     """
     plt.close()
 
-    # data_rows = data.shape[0]
-    # data_cols = data.shape[1]
-    # figsize = (data_cols / 40 + 3.0, data_rows / 40)
     figsize = (12, 4)
     fig, ax = plt.subplots(1, 2, figsize=figsize)
 
@@ -50,11 +48,29 @@ def plot_heatmap(data):
 
     # ヒートマップを表示
     ax[0].imshow(data, cmap=cmap, norm=norm)
-    # ax[1].hist(data.flatten(), bins=51)
-    # ax[1].set_yscale('log')
-    sns.distplot(data.flatten(), kde=True, ax=ax[1])
+    sns.histplot(data.flatten(), kde=True, ax=ax[1], bins=30)
     fig.colorbar(sm, ax=ax[0])
     fig.tight_layout()
+
+    return fig
+
+
+def plot_diag(data):
+    """
+    plot diag
+    """
+    plt.close()
+
+    figsize = (12, 8)
+    fig, ax = plt.subplots(2, 1, figsize=figsize, sharex=True)
+    ax[0].plot(data)
+    ax[0].set_ylabel("特異値")
+    ax[1].plot(data)
+    ax[1].set_yscale("log")
+    ax[1].set_ylabel("特異値(対数)")
+    ax[1].set_xlabel("インデックス")
+    ax[0].grid()
+    ax[1].grid()
 
     return fig
 
@@ -115,6 +131,7 @@ def load_and_decompose_image(image_url):
     # 横幅を広げる
     S_bitmap = np.tile(S_bitmap[:, np.newaxis], min(img.size))
     S_fig = plot_heatmap(S_bitmap)
+    S_diag = plot_diag(S)
 
     # Vのビットマップ画像を作成
     V_fig = plot_heatmap(Vt)
@@ -123,7 +140,8 @@ def load_and_decompose_image(image_url):
         gr.Image(value=img, label="グレイスケール画像（オリジナル）"),
         gr.Image(value=reconstructed_img, label="再構成画像"),
         gr.Plot(value=U_fig, label="左特異ベクトルの行列 U のヒートマップ"),
-        gr.Plot(value=S_fig, label="特異値 Sigma の対角成分のヒートマップ"),
+        gr.Plot(value=S_fig, label="特異行列 Sigma の対角成分のヒートマップ"),
+        gr.Plot(value=S_diag, label="特異行列 Sigma の対角成分のプロット"),
         gr.Plot(value=V_fig, label="右特異ベクトルの行列 Vt のヒートマップ"),
     )
 
@@ -204,7 +222,7 @@ wikipedia = (
     "%E7%89%B9%E7%95%B0%E5%80%A4%E5%88%86%E8%A7%A3"
 )
 
-with gr.Blocks() as demo:
+with gr.Blocks(fill_width=True) as demo:
     gr.Markdown(
         f"""
     # 特異値分解の可視化ツール➗
@@ -292,9 +310,10 @@ with gr.Blocks() as demo:
 
     gr.Markdown("## 分解された行列の分析")
 
-    U_bitmap, S_bitmap, V_bitmap = (
+    S_hist, U_bitmap, S_bitmap, V_bitmap = (
+        gr.Plot(label="特異行列 Sigma の対角成分のプロット"),
         gr.Plot(label="左特異ベクトルの行列 U のヒートマップ"),
-        gr.Plot(label="特異値 Sigma の対角成分のヒートマップ"),
+        gr.Plot(label="特異行列 Sigma の対角成分(特異値)のヒートマップ"),
         gr.Plot(label="右特異ベクトルの行列 Vt のヒートマップ"),
     )
 
@@ -307,6 +326,7 @@ with gr.Blocks() as demo:
         output_image,
         U_bitmap,
         S_bitmap,
+        S_hist,
         V_bitmap,
     ]
 
@@ -321,26 +341,26 @@ with gr.Blocks() as demo:
     ]
 
     # load image and decompose
-    for func in [
-        url_input.submit,
-        url_input.change,
-        submit_button.click,
-    ]:
-        func(
-            update_image,
-            inputs=[url_input, singular_index],
-            outputs=outputs_load + outputs_decompose,
-        )
+    gr.on(
+        [
+            url_input.submit,
+            url_input.change,
+            submit_button.click,
+        ],
+        fn=update_image,
+        inputs=[url_input, singular_index],
+        outputs=outputs_load + outputs_decompose,
+    )
 
     # URLから画像を取得してSVD分解する関数のトリガー設定
-    for func in [
-        singular_index.change,
-    ]:
-        func(
-            decompose_singular_index,
-            inputs=[singular_index],
-            outputs=outputs_decompose,
-        )
+    gr.on(
+        [
+            singular_index.change,
+        ],
+        fn=decompose_singular_index,
+        inputs=[singular_index],
+        outputs=outputs_decompose,
+    )
 
 if __name__ == "__main__":
     # Gradioサーバーを起動
